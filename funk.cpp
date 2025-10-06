@@ -7,6 +7,7 @@
 
 #include "stack.h"
 #include "calc.h"
+#include "spu.h"
 
 enum user_error out_cmd (stack_t* stk)
 {
@@ -39,7 +40,7 @@ enum user_error add_cmd (stack_t* stk)
 
     if (stk->size > 1)
     {
-        printf("***%d***\n", stk->size);
+        //printf("***%d***\n", stk->size);
         stack_pop(stk, &arg_1);
         stack_pop(stk, &arg_2);
 

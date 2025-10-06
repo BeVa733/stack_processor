@@ -9,6 +9,7 @@
 #define STACK_TYPE int
 #include "stack.h"
 #include "calc.h"
+#include "spu.h"
 
 
 void stk_printf(unsigned int index, stack_type value)
@@ -29,7 +30,7 @@ int main(void)
     }
 
     cpu.ip = 0;
-    stack_ctor(&cpu.stk, 10);
+    stack_ctor(&cpu.stk, 2 * cpu.cmd_count);
 
     enum user_error last_err = do_commands(&cpu);
 
@@ -148,7 +149,8 @@ long int check_file_size(FILE* file)
 {
     struct stat file_info = {};
     int fd = fileno(file);
-    if (fstat(fd, &file_info) == -1) {
+    if (fstat(fd, &file_info) == -1)
+    {
         printf("ERROR: check number of lines incorrect\n");
         return -1;
     }
