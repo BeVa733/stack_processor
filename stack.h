@@ -38,7 +38,7 @@ enum status stack_pop(stack_t* stk, stack_type* pop_value);
 void stack_dtor(stack_t* stk);
 
 unsigned int stack_verif(stack_t* stk);
-stack_type hash_sum (stack_t* stk);
+stack_type hash_djb2 (stack_t* stk);
 void stack_dump(stack_t* stk, unsigned int error_code);
 
 void stk_printf(unsigned int index, stack_type value);

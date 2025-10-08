@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <sys/stat.h>
+#include <stdint.h>
 
 #define STACK_TYPE int
 #include "stack.h"
@@ -12,119 +12,227 @@
 #include "spu.h"
 
 
-void stk_printf(unsigned int index, stack_type value)
+void stk_printf (unsigned int index, stack_type value)
 {
     printf("[%u] = %d\n", index, value);
 }
 
-int main(void)
+int main (void)
 {
-    struct processor cpu = {};
+    enum spu_error last_err = NOT_ERRORS;
 
-    cpu.cmd_array = get_commands("input.asm", &cpu.cmd_count);
+    processor spu = {};
+    last_err = spu_ctor(&spu);
 
-    if (cpu.cmd_array == NULL)
+    if (last_err == NOT_ERRORS)
     {
-        printf("Error: failed to read commands\n");
-        return 1;
+        last_err = do_commands(&spu);
     }
-
-    cpu.ip = 0;
-    stack_ctor(&cpu.stk, 2 * cpu.cmd_count);
-
-    enum user_error last_err = do_commands(&cpu);
 
     if (last_err != NOT_ERRORS)
     {
-        print_error_info(last_err);
+        spu_dump(&spu, last_err);
     }
 
-    stack_dtor(&cpu.stk);
-    free(cpu.cmd_array);
+    //spu_dump(&spu, last_err);
+
+    spu_dtor (&spu);
 
     return 0;
 }
 
-enum user_error do_commands(struct processor* cpu)
+enum spu_error spu_ctor (processor* spu)
 {
-    enum user_error last_err = NOT_ERRORS;
-
-    while (cpu->ip < cpu->cmd_count)
+    spu->cmd_array = get_commands("output_asm.bin", &(spu->cmd_count));
+    stack_ctor(&(spu->stk), 20);
+    if (spu->cmd_array == NULL)
     {
-        enum cmd_code command = cpu->cmd_array[cpu->ip++];
+        printf("Error: failed to read commands\n");
+        return CREATION_ERROR;
+    }
+    else
+        return NOT_ERRORS;
+}
+
+void spu_dtor (processor* spu)
+{
+    stack_dtor(&(spu->stk));
+    free(spu->cmd_array);
+}
+
+void spu_dump(processor* spu, enum spu_error last_error)
+{
+    printf("PROCESSOR_DUMP()\n");
+    printf("1) Stack:\n");
+    stack_dump(&(spu->stk), CODE);
+
+    printf("2) Registers [%p]:\n", spu->registers); //TODO - хуйня
+    for (int i = 0; i < 4; i++)
+    {
+        printf("[%d] ", spu->registers[i]);
+    }
+    printf("\n");
+
+    printf("3) cmd_array [%p]:\n", spu->cmd_array);
+    if (spu->cmd_array == NULL)
+    {
+        printf("cmd_array pointer == NULL");
+        return;
+    }
+    for (int i = 0; i < (spu->cmd_count / 8) + 1; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            printf("%2x ", spu->cmd_array[i+j]);
+        }
+
+        printf("\n");
+    }
+
+    print_error_info(last_error);
+
+}
+
+enum spu_error do_commands (processor* spu)
+{
+    enum spu_error last_err = NOT_ERRORS;
+
+    int pop_value     = 0;
+    int pushreg_value = 0;
+    int push_value    = 0;
+
+    while (spu->ip < spu->cmd_count)
+    {
+        enum cmd_code command = (enum cmd_code)spu->cmd_array[spu->ip++];
 
         switch (command)
         {
             case HLT:
                 return NOT_ERRORS;
+                break;
 
             case CMD_OUT:
-                last_err = out_cmd(&cpu->stk);
+                last_err = out_cmd(&spu->stk);
                 break;
 
             case PUSH:
-                if (cpu->ip >= cpu->cmd_count) {
+                if (spu->ip >= spu->cmd_count)
+                {
                     return INCORRECT_N_ARG;
                 }
+                push_value = spu->cmd_array[spu->ip++];
+                last_err = push_cmd(&spu->stk, push_value);
+                break;
+
+            case IN_CMD:
+                if (spu->ip >= spu->cmd_count)
                 {
-                    int value = cpu->cmd_array[cpu->ip++];
-                    last_err = push_cmd(&cpu->stk, value);
+                    return INCORRECT_N_ARG;
                 }
+                push_value = spu->cmd_array[spu->ip++];
+                last_err = in_cmd(&spu->stk, push_value);
+                break;
+
+            case PUSHREG:
+                if (spu->ip >= spu->cmd_count)
+                {
+                    return INCORRECT_N_ARG;
+                }
+                pushreg_value = spu->cmd_array[spu->ip++];
+                last_err = pushreg_cmd(spu, pushreg_value);
+                break;
+
+            case POPREG:
+                if (spu->ip >= spu->cmd_count)
+                {
+                    return INCORRECT_N_ARG;
+                }
+                pop_value = spu->cmd_array[spu->ip++];
+                last_err = popreg_cmd(spu, pop_value);
                 break;
 
             case ADD:
-                last_err = add_cmd(&cpu->stk);
+                last_err = add_cmd(&spu->stk);
                 break;
 
             case SUB:
-                last_err = sub_cmd(&cpu->stk);
+                last_err = sub_cmd(&spu->stk);
                 break;
 
             case MUL:
-                last_err = mul_cmd(&cpu->stk);
+                last_err = mul_cmd(&spu->stk);
                 break;
 
             case DIV:
-                last_err = div_cmd(&cpu->stk);
+                last_err = div_cmd(&spu->stk);
                 break;
 
             case POW:
-                last_err = pow_cmd(&cpu->stk);
+                last_err = pow_cmd(&spu->stk);
                 break;
 
             case SQRT:
-                last_err = sqrt_cmd(&cpu->stk);
+                last_err = sqrt_cmd(&spu->stk);
+                break;
+
+            case JB:
+                last_err = jb_cmd(spu);
+                break;
+
+            case JBE:
+                last_err = jbe_cmd(spu);
+                break;
+
+            case JA:
+                last_err = ja_cmd(spu);
+                break;
+
+            case JAE:
+                last_err = jae_cmd(spu);
+                break;
+
+            case JE:
+                last_err = je_cmd(spu);
+                break;
+
+            case JNE:
+                last_err = jne_cmd(spu);
                 break;
 
             default:
                 return INCORRECT_COMMAND;
+                break;
         }
 
-        if (last_err != NOT_ERRORS) {
+        if (last_err != NOT_ERRORS)
+        {
             return last_err;
         }
     }
+
     return NOT_ERRORS;
 }
 
-enum cmd_code* get_commands(const char* filename, int* cmd_count)
+uint16_t* get_commands(const char* filename, int* cmd_count)
 {
 
-    FILE* file = fopen(filename, "r");
+    FILE* file = fopen(filename, "rb");
     if (!file)
     {
         printf("Reading error\n");
         return NULL;
     }
 
-    long int file_size = check_file_size(file);
-    if (file_size <= 0)
-    {
-        fclose(file);
-        return NULL;
-    }
+    uint16_t sign       = 0;
+    uint8_t ver         = 0;
+    uint16_t n_commands = 0;
 
-    enum cmd_code* cmd_mass = (enum cmd_code*)calloc(file_size, sizeof(enum cmd_code));
+    fread(&sign, sizeof(uint16_t), 1, file);
+    fread(&ver, sizeof(uint8_t), 1, file);
+    fread(&n_commands, sizeof(uint16_t), 1, file);
+    *cmd_count = n_commands;
+
+    uint16_t* cmd_mass = (uint16_t*)calloc(n_commands, sizeof(uint16_t));
     if (cmd_mass == NULL)
     {
         free(cmd_mass);
@@ -132,27 +240,8 @@ enum cmd_code* get_commands(const char* filename, int* cmd_count)
         return NULL;
     }
 
-    *cmd_count = 0;
-
-    int value;
-    while (fscanf(file, "%d", &value) == 1)
-    {
-        cmd_mass[(*cmd_count)++] = (enum cmd_code)value;
-    }
+    fread(cmd_mass, sizeof(uint16_t), n_commands, file);
 
     fclose(file);
     return cmd_mass;
-}
-
-
-long int check_file_size(FILE* file)
-{
-    struct stat file_info = {};
-    int fd = fileno(file);
-    if (fstat(fd, &file_info) == -1)
-    {
-        printf("ERROR: check number of lines incorrect\n");
-        return -1;
-    }
-    return file_info.st_size;
 }

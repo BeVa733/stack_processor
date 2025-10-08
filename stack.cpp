@@ -9,7 +9,7 @@ bool IS_WAS_DUMP              = false;
 const ssize_t VERY_BIG_NUMBER = 1000000000;
 unsigned int CODE             = 0b00000;
 const stack_type PTICHKA      = 0xEBA1BABE;
-stack_type global_valid_hash  = 0;
+stack_type global_valid_hash  = 5381;
 
 enum status stack_ctor(stack_t* stk, int len)
 {
@@ -58,7 +58,7 @@ enum status stack_push(stack_t* stk, stack_type value)
 
     stk->data[stk->size ON_DEBUG( + 1 )] = value;
     stk->size++;
-    global_valid_hash += value;
+    global_valid_hash = global_valid_hash * 33 + value;
 
     VERIFY
 
@@ -78,7 +78,7 @@ enum status stack_pop(stack_t* stk, stack_type* pop_value)
     stk->size--;
     *pop_value = stk->data[stk->size ON_DEBUG( + 1 )];
     stk->data[stk->size ON_DEBUG( + 1 )] = 0;
-    global_valid_hash -= *pop_value;
+    global_valid_hash = (global_valid_hash - *pop_value) / 33;
 
     VERIFY
 
@@ -111,7 +111,7 @@ unsigned int stack_verif(stack_t* stk)
         error_code |= 0b00010;
 
     ON_DEBUG (
-    else if (stk->data[0] != PTICHKA || stk->data[stk->capacity+1] != PTICHKA || global_valid_hash != hash_sum(stk))
+    else if (stk->data[0] != PTICHKA || stk->data[stk->capacity+1] != PTICHKA || global_valid_hash != hash_djb2(stk))
         error_code |= 0b00001;
     )
 
@@ -171,14 +171,15 @@ void stack_dump(stack_t* stk, unsigned int error_code)
     printf("}\n");
 }
 
-stack_type hash_sum (stack_t* stk)  //DJB2
+stack_type hash_djb2 (stack_t* stk)  //DJB2
 {
-    stack_type sum = 0;
+    stack_type hash = 5381;
 
     for(int i = 0; i < stk->size; i++)
     {
-        sum += stk->data[i];
+        hash *= 33;
+        hash += stk->data[i];
     }
 
-    return sum;
+    return hash;
 }

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include "calc.h"
 #include "assem.h"
@@ -11,47 +12,49 @@
 int main(int argc, char *argv[])
 {
     int n_commands = 0;
-    enum type_input input = STDIN;
     int* code_mass = NULL;
 
-    if (argc == 2)
-        input = FILE_INP;
-    else if (argc == 1)
-        input = STDIN;
-    else
+    if (argc != 2)
     {
-        printf("too many arguments\n");
+        printf("ERROR: incorrect number of arguments (must be 2)\n");
         return 1;
     }
 
-    if (input == FILE_INP)
-        code_mass = file_code_compile(&n_commands, argv[1]);
+    code_mass = file_code_compile(&n_commands, argv[1]);
 
-    else
-        code_mass = stdin_code_compile(&n_commands);
+    ON_DEBUG (code_writer(code_mass, "output_asm.txt", n_commands);)
+    ON_DEBUG_ELSE (bin_code_writer(code_mass, "output_asm.bin", &n_commands);)
 
-    code_writer(code_mass, "input.asm", n_commands);
     free(code_mass);
     return 0;
 }
 
-enum cmd_code get_stdin_command(void)
+enum cmd_code get_file_command(char* str)
 {
     const int MAX_LEN = 10;
     char input[MAX_LEN] = "";
 
-    if (scanf("%9s", input) != 1)
+    if (sscanf(str, "%9s", input) != 1)
         return INC_FUNC;
 
-    if      (strcmp(input, "HLT")  == 0) return HLT;
-    else if (strcmp(input, "OUT")  == 0) return CMD_OUT;
-    else if (strcmp(input, "PUSH") == 0) return PUSH;
-    else if (strcmp(input, "ADD")  == 0) return ADD;
-    else if (strcmp(input, "SUB")  == 0) return SUB;
-    else if (strcmp(input, "MUL")  == 0) return MUL;
-    else if (strcmp(input, "DIV")  == 0) return DIV;
-    else if (strcmp(input, "POW")  == 0) return POW;
-    else if (strcmp(input, "SQRT") == 0) return SQRT;
+    if      (strcmp(input, "HLT")  == 0)    return HLT;
+    else if (strcmp(input, "OUT")  == 0)    return CMD_OUT;
+    else if (strcmp(input, "PUSH") == 0)    return PUSH;
+    else if (strcmp(input, "ADD")  == 0)    return ADD;
+    else if (strcmp(input, "SUB")  == 0)    return SUB;
+    else if (strcmp(input, "MUL")  == 0)    return MUL;
+    else if (strcmp(input, "DIV")  == 0)    return DIV;
+    else if (strcmp(input, "POW")  == 0)    return POW;
+    else if (strcmp(input, "SQRT") == 0)    return SQRT;
+    else if (strcmp(input, "PUSHREG") == 0) return PUSHREG;
+    else if (strcmp(input, "POPREG") == 0)  return POPREG;
+    else if (strcmp(input, "JB") == 0)      return JB;
+    else if (strcmp(input, "JBE") == 0)     return JBE;
+    else if (strcmp(input, "JA") == 0)      return JA;
+    else if (strcmp(input, "JAE") == 0)     return JAE;
+    else if (strcmp(input, "JE") == 0)      return JE;
+    else if (strcmp(input, "JNE") == 0)     return JNE;
+    else if (strcmp(input, "IN") == 0)      return IN_CMD;
     else return INC_FUNC;
 }
 
@@ -68,73 +71,56 @@ void code_writer(int* code_mass, const char* filename, int n_commands)
     fclose(file);
 }
 
-int* stdin_code_compile(int* n_commands)
+void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
 {
-    enum cmd_code command = HLT;
-    int max_commands = 20;
-    int push_arg = 0;
-    int* code_mass = (int*)calloc(max_commands, sizeof(int));
+    assert(code_mass != NULL);
 
-    while(1)
+    FILE* file = fopen(filename, "wb");
+    if(!file)
     {
-        command = get_stdin_command();
-
-        if (command == INC_FUNC)
-            break;
-
-        if (*n_commands >= max_commands - 2)
-        {
-            max_commands *= 2;
-            int* new_code_mass = (int*)realloc(code_mass, max_commands * sizeof(int));
-            if (new_code_mass == NULL)
-            {
-                printf("Memory reallocation error\n");
-                free(code_mass);
-                return NULL;
-            }
-            code_mass = new_code_mass;
-        }
-
-        code_mass[(*n_commands)++] = command;
-
-        if (command == HLT)
-            break;
-
-        if (command == PUSH)
-        {
-            if (scanf("%d", &push_arg) != 1)
-            {
-                printf("Expected number after PUSH\n");
-                break;
-            }
-            code_mass[(*n_commands)++] = push_arg;
-        }
+        printf("error opening file\n");
+        return;
     }
 
-    return code_mass;
+    uint16_t signature = (uint16_t)SIGNATURAA;
+    uint8_t version = (uint8_t)VERSION;
+    uint16_t command_count = (uint16_t)(*n_commands);
+
+    fwrite(&signature, sizeof(signature), 1, file);
+    fwrite(&version, sizeof(version), 1, file);
+    fwrite(&command_count, sizeof(command_count), 1, file);
+
+    for (int i = 0; i < *n_commands; i++)
+    {
+        uint16_t cmd = (uint16_t)code_mass[i];
+        fwrite(&cmd, sizeof(cmd), 1, file);
+    }
+
+    fclose(file);
 }
 
 int* file_code_compile(int* n_commands, const char* filename)
 {
-    int n_lines = 0;
+    int n_lines           = 0;
+    enum cmd_code command = HLT;
+    int push_arg          = 0;
+    int jump_arg          = 0;
+    char reg_lit          = 'a';
+
     char** ptr_mass = read_text(filename, &n_lines);
     if (ptr_mass == NULL)
     {
         return NULL;
     }
-
     int max_commands = n_lines * 2;
-    int* code_mass = (int*)calloc(max_commands, sizeof(int));
 
+    int* code_mass = (int*)calloc(max_commands, sizeof(int));
     if (code_mass == NULL)
     {
         free(ptr_mass[0]);
         free(ptr_mass);
         return NULL;
     }
-
-    enum cmd_code command = HLT;
-    int push_arg = 0;
 
     for (int i = 0; i < n_lines; i++)
     {
@@ -153,14 +139,47 @@ int* file_code_compile(int* n_commands, const char* filename)
 
         if (command == PUSH)
         {
-
             if (sscanf(ptr_mass[i], "PUSH %d", &push_arg) != 1)
             {
                 printf("Expected number after PUSH in line %d\n", i + 1);
                 break;
             }
+
             code_mass[(*n_commands)++] = push_arg;
         }
+
+        if (command == PUSHREG || command == POPREG)
+        {
+            if (sscanf(ptr_mass[i], "%*s %cX", &reg_lit) != 1)
+            {
+                printf("Expected register after command in the line %d\n", i + 1);
+                break;
+            }
+            code_mass[(*n_commands)++] = reg_lit - 'A';
+        }
+
+        if (command == JB || command == JBE || command == JA || command == JAE || command == JE || command == JNE)
+        {
+            if (sscanf(ptr_mass[i], "%*s %d", &jump_arg) != 1)
+            {
+                printf("Expected number after JUMP in line %d\n", i + 1);
+                break;
+            }
+
+            code_mass[(*n_commands)++] = jump_arg;
+        }
+
+        if (command == IN_CMD)
+        {
+            if (scanf("%d", &push_arg) != 1)
+            {
+                printf("expected arg before IN\n");
+                break;
+            }
+
+            code_mass[(*n_commands)++] = push_arg;
+        }
+
     }
 
     free(ptr_mass[0]);
@@ -254,24 +273,4 @@ int check_n_lines(char* buffer, size_t read_size)
     }
 
     return n_lines;
-}
-
-enum cmd_code get_file_command(char* str)
-{
-    const int MAX_LEN = 10;
-    char input[MAX_LEN] = "";
-
-    if (sscanf(str, "%9s", input) != 1)
-        return INC_FUNC;
-
-    if      (strcmp(input, "HLT")  == 0) return HLT;
-    else if (strcmp(input, "OUT")  == 0) return CMD_OUT;
-    else if (strcmp(input, "PUSH") == 0) return PUSH;
-    else if (strcmp(input, "ADD")  == 0) return ADD;
-    else if (strcmp(input, "SUB")  == 0) return SUB;
-    else if (strcmp(input, "MUL")  == 0) return MUL;
-    else if (strcmp(input, "DIV")  == 0) return DIV;
-    else if (strcmp(input, "POW")  == 0) return POW;
-    else if (strcmp(input, "SQRT") == 0) return SQRT;
-    else return INC_FUNC;
 }
