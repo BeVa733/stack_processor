@@ -1,4 +1,3 @@
-//#include <TXLib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -14,7 +13,7 @@ enum spu_error out_cmd (stack_t* stk)
 {
     if (stk->size > 0)
     {
-        stack_type last_value = 0;
+        int last_value = 0;
 
         if (stack_pop(stk, &last_value) == SUCCESS)
         {

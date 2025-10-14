@@ -2,11 +2,11 @@
 #define CALC_H
 
 const int SIGNATURAA = 0xBEBA;
-const int VERSION    = 3;
+const int VERSION    = 4;
 
 enum cmd_code
 {
-    INC_FUNC = -1,
+    INC_FUNC = 333,
     HLT      = 0,
     CMD_OUT  = 1,
     PUSH     = 2,

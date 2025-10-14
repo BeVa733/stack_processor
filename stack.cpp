@@ -1,4 +1,3 @@
-//#include <TXLib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -65,7 +64,7 @@ enum status stack_push(stack_t* stk, stack_type value)
     return SUCCESS;
 }
 
-enum status stack_pop(stack_t* stk, stack_type* pop_value)
+enum status stack_pop(stack_t* stk, int* pop_value)
 {
     VERIFY
 

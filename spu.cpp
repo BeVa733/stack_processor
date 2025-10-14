@@ -1,4 +1,3 @@
-//#include <TXLib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -28,8 +27,6 @@ int main (void)
     {
         last_err = do_commands(&spu);
     }
-
-    spu_dump (&spu, 0);
 
     spu_dtor (&spu);
 
@@ -190,7 +187,7 @@ enum spu_error do_commands (processor* spu)
                 {
                     return INCORRECT_N_ARG;
                 }
-                push_value = spu->cmd_array[spu->ip++];
+                push_value = (int16_t)spu->cmd_array[spu->ip++];
                 last_err = push_cmd(&spu->stk, push_value);
                 break;
 
@@ -199,7 +196,7 @@ enum spu_error do_commands (processor* spu)
                 {
                     return INCORRECT_N_ARG;
                 }
-                push_value = spu->cmd_array[spu->ip++];
+                push_value = (int16_t)spu->cmd_array[spu->ip++];
                 last_err = in_cmd(&spu->stk, push_value);
                 break;
 
@@ -208,7 +205,7 @@ enum spu_error do_commands (processor* spu)
                 {
                     return INCORRECT_N_ARG;
                 }
-                pushreg_value = spu->cmd_array[spu->ip++];
+                pushreg_value = (int16_t)spu->cmd_array[spu->ip++];
                 last_err = pushreg_cmd(spu, pushreg_value);
                 break;
 

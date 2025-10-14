@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
 {
     int n_commands = 0;
     int* code_mass = NULL;
+    int metki_array[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
     if (argc != 2)
     {
@@ -20,7 +21,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    code_mass = file_code_compile(&n_commands, argv[1]);
+    code_mass = file_code_compile(&n_commands, argv[1], metki_array);
 
     ON_DEBUG (code_writer(code_mass, "output_asm.txt", n_commands);)
     ON_DEBUG_ELSE (bin_code_writer(code_mass, "output_asm.bin", &n_commands);)
@@ -35,9 +36,6 @@ enum cmd_code get_file_command(char* str)
     char input[MAX_LEN] = "";
 
     if (sscanf(str, "%9s", input) != 1)
-        return INC_FUNC;
-
-    if (strlen(input) == 0 || strcmp(input, "\n") == 0)
         return INC_FUNC;
 
     if      (strcmp(input, "HLT")  == 0)    return HLT;
@@ -103,22 +101,62 @@ void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
     fclose(file);
 }
 
-int* file_code_compile(int* n_commands, const char* filename)
+int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
 {
-    int n_lines           = 0;
+    int n_lines = 0;
     enum cmd_code command = HLT;
-    int push_arg          = 0;
-    int jump_arg          = 0;
-    char reg_lit          = 'a';
+    int push_arg = 0;
+    int jump_arg = 0;
+    char reg_lit = 'a';
+    int metka = -1;
 
     char** ptr_mass = read_text(filename, &n_lines);
     if (ptr_mass == NULL)
-    {
         return NULL;
-    }
-    int max_commands = n_lines * 2;
 
-    int* code_mass = (int*)calloc(max_commands, sizeof(int));
+    int total_commands = 0;
+    for (int i = 0; i < n_lines; i++)
+    {
+        if (ptr_mass[i][0] == '\0' || ptr_mass[i][0] == '\n')
+            continue;
+
+        if (sscanf(ptr_mass[i], ":%d", &metka) == 1)
+        {
+            metki_array[metka] = total_commands;
+            continue;
+        }
+
+        command = get_file_command(ptr_mass[i]);
+        if (command == INC_FUNC)
+        {
+            printf("incorrect name of function in line: %d\n", i + 1);
+            free(ptr_mass[0]);
+            free(ptr_mass);
+            return NULL;
+        }
+
+        total_commands++;
+
+        if (command == PUSH)
+        {
+            total_commands++;
+        }
+        else if (command == PUSHREG || command == POPREG)
+        {
+            total_commands++;
+        }
+        else if (command == JB || command == JBE || command == JA ||
+                 command == JAE || command == JE || command == JNE || command == JMP)
+        {
+            total_commands++;
+        }
+        else if (command == IN_CMD)
+        {
+            total_commands++;
+        }
+    }
+
+    int* code_mass = (int*)calloc(total_commands, sizeof(int));
     if (code_mass == NULL)
     {
         free(ptr_mass[0]);
@@ -126,14 +164,27 @@ int* file_code_compile(int* n_commands, const char* filename)
         return NULL;
     }
 
+    *n_commands = 0;
+
     for (int i = 0; i < n_lines; i++)
     {
+        if (ptr_mass[i][0] == '\0' || ptr_mass[i][0] == '\n')
+            continue;
+
+        if (sscanf(ptr_mass[i], ":%d", &metka) == 1)
+        {
+            continue;
+        }
+
         command = get_file_command(ptr_mass[i]);
 
         if (command == INC_FUNC)
         {
             printf("incorrect name of function in line: %d\n", i + 1);
-            break;
+            free(code_mass);
+            free(ptr_mass[0]);
+            free(ptr_mass);
+            return NULL;
         }
 
         code_mass[(*n_commands)++] = command;
@@ -143,44 +194,68 @@ int* file_code_compile(int* n_commands, const char* filename)
             if (sscanf(ptr_mass[i], "PUSH %d", &push_arg) != 1)
             {
                 printf("Expected number after PUSH in line %d\n", i + 1);
-                break;
+                free(code_mass);
+                free(ptr_mass[0]);
+                free(ptr_mass);
+                return NULL;
             }
-
             code_mass[(*n_commands)++] = push_arg;
         }
-
-        if (command == PUSHREG || command == POPREG)
+        else if (command == PUSHREG || command == POPREG)
         {
             if (sscanf(ptr_mass[i], "%*s %cX", &reg_lit) != 1)
             {
-                printf("Expected register after command in the line %d\n", i + 1);
-                break;
+                printf("Expected register after command in line %d\n", i + 1);
+                free(code_mass);
+                free(ptr_mass[0]);
+                free(ptr_mass);
+                return NULL;
             }
             code_mass[(*n_commands)++] = reg_lit - 'A';
         }
-
-        if (command == JB || command == JBE || command == JA || command == JAE || command == JE || command == JNE || command == JMP)
+        else if (command == JB || command == JBE || command == JA ||
+                 command == JAE || command == JE || command == JNE || command == JMP)
         {
-            if (sscanf(ptr_mass[i], "%*s %d", &jump_arg) != 1)
+            if (sscanf(ptr_mass[i], "%*s :%d", &jump_arg) == 1)
             {
-                printf("Expected number after JUMP in line %d\n", i + 1);
-                break;
+                if (jump_arg >= 0 && jump_arg < 10 && metki_array[jump_arg] != -1)
+                {
+                    code_mass[(*n_commands)++] = metki_array[jump_arg];
+                }
+                else
+                {
+                    printf("Unknown metka :%d in line %d\n", jump_arg, i + 1);
+                    free(code_mass);
+                    free(ptr_mass[0]);
+                    free(ptr_mass);
+                    return NULL;
+                }
             }
-
-            code_mass[(*n_commands)++] = jump_arg;
+            else if (sscanf(ptr_mass[i], "%*s %d", &jump_arg) == 1)
+            {
+                code_mass[(*n_commands)++] = jump_arg;
+            }
+            else
+            {
+                printf("Expected number or metka after JUMP in line %d\n", i + 1);
+                free(code_mass);
+                free(ptr_mass[0]);
+                free(ptr_mass);
+                return NULL;
+            }
         }
-
-        if (command == IN_CMD)
+        else if (command == IN_CMD)
         {
             if (scanf("%d", &push_arg) != 1)
             {
                 printf("expected arg before IN\n");
-                break;
+                free(code_mass);
+                free(ptr_mass[0]);
+                free(ptr_mass);
+                return NULL;
             }
-
             code_mass[(*n_commands)++] = push_arg;
         }
-
     }
 
     free(ptr_mass[0]);
