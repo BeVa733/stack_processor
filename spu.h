@@ -1,18 +1,33 @@
 #ifndef SPU_H
 #define SPU_H
 
+const int N_REGISTERS = 6;
+
 struct processor
 {
     uint16_t* cmd_array;
-    int registers[4];
+    int registers[N_REGISTERS];
     int cmd_count;
     int ip;
     stack_t stk;
 };
 
+#define SPU_VERIFY                                     \
+    if(!IS_WAS_DUMP)                                   \
+    {                                                  \
+        unsigned int spu_verif_code = spu_verif(spu);  \
+        if(spu_verif_code != NOT_ERRORS)               \
+        {                                              \
+            spu_dump(spu, spu_verif_code);             \
+            IS_WAS_DUMP = true;                        \
+            return CREATION_ERROR;                     \
+        }                                              \
+    }
+
+
 enum spu_error spu_ctor (processor* spu);
 void spu_dtor (processor* spu);
-void spu_dump(processor* spu, enum spu_error last_error);
+void spu_dump(processor* spu, unsigned int error_code);
 
 uint16_t* get_commands (const char* filename, int* cmd_count);
 enum spu_error do_commands(struct processor* cpu);
@@ -34,7 +49,15 @@ enum spu_error ja_cmd (processor* spu);
 enum spu_error jae_cmd (processor* spu);
 enum spu_error je_cmd (processor* spu);
 enum spu_error jne_cmd (processor* spu);
+enum spu_error jmp_cmd (processor* spu);
 
 void print_error_info (enum spu_error last_error);
+unsigned int spu_verif(processor* spu);
+
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_RESET   "\033[0m"
+
+const ssize_t SPU_VERY_BIG_NUMBER = 1000000000;
 
 #endif

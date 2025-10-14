@@ -1,7 +1,8 @@
-#include <TXLib.h>
+//#include <TXLib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define STACK_TYPE int
 
@@ -22,7 +23,6 @@ enum spu_error out_cmd (stack_t* stk)
         }
         else return INCORRECT_COMMAND;
     }
-
     else
         return NO_ENOUGH_ELEMENTS;
 }
@@ -45,7 +45,7 @@ enum spu_error in_cmd (stack_t* stk, int push_value)
 
 enum spu_error pushreg_cmd (processor* spu, int value)
 {
-    if (value < 0 || value >3)
+    if (value < 0 || value > 5)
         return INCORRECT_COMMAND;
 
     int push_value = spu->registers[value];
@@ -188,96 +188,44 @@ enum spu_error sqrt_cmd (stack_t* stk)
         return NO_ENOUGH_ELEMENTS;
 }
 
-enum spu_error jb_cmd (processor* spu)
+
+#define GEN_JUMP(name_funk, comp_sign)      \
+enum spu_error name_funk (processor* spu)   \
+{                                           \
+                                            \
+    if (spu->stk.size < 2)                  \
+        return NO_ENOUGH_ELEMENTS;          \
+                                            \
+    int pop_value_1 = 0;                    \
+    int pop_value_2 = 0;                    \
+                                            \
+    stack_pop (&(spu->stk), &pop_value_1);  \
+    stack_pop (&(spu->stk), &pop_value_2);  \
+                                            \
+    if (pop_value_2 comp_sign pop_value_1)  \
+        spu->ip = spu->cmd_array[spu->ip];  \
+    else                                    \
+        spu->ip++;                          \
+                                            \
+    return NOT_ERRORS;                      \
+}
+
+GEN_JUMP(jb_cmd, <)
+GEN_JUMP(jbe_cmd, <=)
+GEN_JUMP(ja_cmd, >)
+GEN_JUMP(jae_cmd, >=)
+GEN_JUMP(je_cmd, ==)
+GEN_JUMP(jne_cmd, !=)
+
+#undef GEN_JUMP
+
+enum spu_error jmp_cmd (processor* spu)
 {
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-
-    if (pop_value_2 < pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
+    spu->ip = spu->cmd_array[spu->ip];
 
     return NOT_ERRORS;
 }
 
-enum spu_error jbe_cmd (processor* spu)
-{
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-    if (pop_value_2 <= pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
-
-    return NOT_ERRORS;
-}
-
-enum spu_error ja_cmd (processor* spu)
-{
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-    if (pop_value_2 > pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
-
-    return NOT_ERRORS;
-}
-
-enum spu_error jae_cmd (processor* spu)
-{
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-    if (pop_value_2 >= pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
-
-    return NOT_ERRORS;
-}
-
-enum spu_error je_cmd (processor* spu)
-{
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-    if (pop_value_2 == pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
-
-    return NOT_ERRORS;
-}
-
-enum spu_error jne_cmd (processor* spu)
-{
-    int pop_value_1 = 0;
-    int pop_value_2 = 0;
-
-    stack_pop (&(spu->stk), &pop_value_1);
-    stack_pop (&(spu->stk), &pop_value_2);
-    if (pop_value_2 != pop_value_1)
-        spu->ip = spu->cmd_array[spu->ip];
-    else
-        spu->ip++;
-
-    return NOT_ERRORS;
-}
 
 void print_error_info(enum spu_error last_error)
 {

@@ -1,4 +1,4 @@
-#include <TXLib.h>
+//#include <TXLib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -29,12 +29,7 @@ int main (void)
         last_err = do_commands(&spu);
     }
 
-    if (last_err != NOT_ERRORS)
-    {
-        spu_dump(&spu, last_err);
-    }
-
-    //spu_dump(&spu, last_err);
+    spu_dump (&spu, 0);
 
     spu_dtor (&spu);
 
@@ -60,41 +55,117 @@ void spu_dtor (processor* spu)
     free(spu->cmd_array);
 }
 
-void spu_dump(processor* spu, enum spu_error last_error)
+unsigned int spu_verif(processor* spu)
 {
-    printf("PROCESSOR_DUMP()\n");
-    printf("1) Stack:\n");
-    stack_dump(&(spu->stk), CODE);
+    unsigned int error_code = SPU_NO_ERRORS;
 
-    printf("2) Registers [%p]:\n", spu->registers); //TODO - хуйня
-    for (int i = 0; i < 4; i++)
+    if (spu == NULL)
     {
-        printf("[%d] ", spu->registers[i]);
+        error_code |= SPU_BAD_MAIN_PTR;
+        return error_code;
     }
-    printf("\n");
 
-    printf("3) cmd_array [%p]:\n", spu->cmd_array);
-    if (spu->cmd_array == NULL)
+    else if (spu->cmd_array == NULL)
+        error_code |= SPU_BAD_CMD_ARRAY;
+
+    else if (spu->cmd_count < 0 || spu->cmd_count > SPU_VERY_BIG_NUMBER)
+        error_code |= SPU_BAD_CMD_COUNT;
+
+    else if (spu->ip < 0)
+        error_code |= SPU_BAD_IP;
+
+    for (int i = 0; i < N_REGISTERS; i++)
     {
-        printf("cmd_array pointer == NULL");
-        return;
-    }
-    for (int i = 0; i < (spu->cmd_count / 8) + 1; i++)
-    {
-        for (int j = 0; j < 8; j++)
+        if (spu->registers[i] < -SPU_VERY_BIG_NUMBER || spu->registers[i] > SPU_VERY_BIG_NUMBER)
         {
-            printf("%2x ", spu->cmd_array[i+j]);
+            error_code |= SPU_BAD_REGISTERS;
+            break;
         }
+    }
+
+    return error_code;
+}
+
+void spu_dump(processor* spu, unsigned int error_code)
+{
+    unsigned int verif_code = spu_verif(spu);
+
+    printf("PROCESSOR_DUMP()\n");
+
+    printf("Verification status: ");
+    if (verif_code == NOT_ERRORS)
+        printf(COLOR_GREEN "OK" COLOR_RESET "\n");
+    else
+    {
+        printf(COLOR_RED "ERRORS:" COLOR_RESET);
+        if (verif_code & SPU_BAD_MAIN_PTR)
+            printf(" BAD_MAIN_PTR");
+
+        if (verif_code & SPU_BAD_CMD_ARRAY)
+            printf(" BAD_CMD_ARRAY");
+
+        if (verif_code & SPU_BAD_CMD_COUNT)
+            printf(" BAD_CMD_COUNT");
+
+        if (verif_code & SPU_BAD_IP)
+            printf(" BAD_IP");
+
+        if (verif_code & SPU_BAD_REGISTERS)
+            printf(" BAD_REGISTERS");
 
         printf("\n");
     }
 
-    print_error_info(last_error);
+    printf("1) Stack:\n");
+    stack_dump(&(spu->stk), stack_verif(&spu->stk));
 
+    printf("2) Registers [%p]:\n", spu->registers);
+    for (int i = 0; i < 6; i++)
+    {
+        printf("  %cX: %d (0x%08X)\n", 'A' + i, spu->registers[i], spu->registers[i]);
+    }
+
+    printf("3) Command pointer (IP): %d (0x%04X)\n", spu->ip, spu->ip);
+
+    printf("4) Command array [%p]:\n", spu->cmd_array);
+    if (spu->cmd_array == NULL)
+    {
+        printf("  cmd_array pointer == NULL\n");
+        return;
+    }
+
+    printf("Command memory:\n");
+
+    int print_count = 0;
+    printf("[0x0000]    ");
+
+    for (int i = 0; i < spu->cmd_count; i++)
+    {
+        if (print_count == 8)
+        {
+            printf("\n");
+            print_count = 0;
+            printf("[0x%04X]    ", i);
+        }
+
+        if (i == spu->ip)
+            printf(COLOR_GREEN "0x%04X  " COLOR_RESET, spu->cmd_array[i]);
+
+        else
+            printf("0x%04X  ", spu->cmd_array[i]);
+
+        print_count++;
+    }
+    printf("\n");
+
+    print_error_info((enum spu_error)error_code);
 }
 
 enum spu_error do_commands (processor* spu)
 {
+
+    SPU_VERIFY
+
     enum spu_error last_err = NOT_ERRORS;
 
     int pop_value     = 0;
@@ -109,7 +180,6 @@ enum spu_error do_commands (processor* spu)
         {
             case HLT:
                 return NOT_ERRORS;
-                break;
 
             case CMD_OUT:
                 last_err = out_cmd(&spu->stk);
@@ -197,6 +267,10 @@ enum spu_error do_commands (processor* spu)
 
             case JNE:
                 last_err = jne_cmd(spu);
+                break;
+
+            case JMP:
+                last_err = jmp_cmd(spu);
                 break;
 
             default:

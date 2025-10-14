@@ -37,6 +37,9 @@ enum cmd_code get_file_command(char* str)
     if (sscanf(str, "%9s", input) != 1)
         return INC_FUNC;
 
+    if (strlen(input) == 0 || strcmp(input, "\n") == 0)
+        return INC_FUNC;
+
     if      (strcmp(input, "HLT")  == 0)    return HLT;
     else if (strcmp(input, "OUT")  == 0)    return CMD_OUT;
     else if (strcmp(input, "PUSH") == 0)    return PUSH;
@@ -55,6 +58,7 @@ enum cmd_code get_file_command(char* str)
     else if (strcmp(input, "JE") == 0)      return JE;
     else if (strcmp(input, "JNE") == 0)     return JNE;
     else if (strcmp(input, "IN") == 0)      return IN_CMD;
+    else if (strcmp(input, "JMP") == 0)     return JMP;
     else return INC_FUNC;
 }
 
@@ -134,9 +138,6 @@ int* file_code_compile(int* n_commands, const char* filename)
 
         code_mass[(*n_commands)++] = command;
 
-        if (command == HLT)
-            break;
-
         if (command == PUSH)
         {
             if (sscanf(ptr_mass[i], "PUSH %d", &push_arg) != 1)
@@ -158,7 +159,7 @@ int* file_code_compile(int* n_commands, const char* filename)
             code_mass[(*n_commands)++] = reg_lit - 'A';
         }
 
-        if (command == JB || command == JBE || command == JA || command == JAE || command == JE || command == JNE)
+        if (command == JB || command == JBE || command == JA || command == JAE || command == JE || command == JNE || command == JMP)
         {
             if (sscanf(ptr_mass[i], "%*s %d", &jump_arg) != 1)
             {

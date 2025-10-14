@@ -24,7 +24,8 @@ enum cmd_code
     JAE      = 14,
     JE       = 15,
     JNE      = 16,
-    IN_CMD   = 17
+    IN_CMD   = 17,
+    JMP      = 18
 };
 
 enum spu_error
@@ -38,5 +39,16 @@ enum spu_error
     INCORRECT_COMMAND   = 6,
     CREATION_ERROR      = 7
 };
+
+enum spu_verif_error
+{
+    SPU_NO_ERRORS        = 0b00000,
+    SPU_BAD_MAIN_PTR     = 0b10000,
+    SPU_BAD_CMD_ARRAY    = 0b01000,
+    SPU_BAD_CMD_COUNT    = 0b00100,
+    SPU_BAD_IP           = 0b00010,
+    SPU_BAD_REGISTERS    = 0b00001
+};
+
 
 #endif
