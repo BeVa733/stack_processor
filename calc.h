@@ -3,6 +3,7 @@
 
 const int SIGNATURAA = 0xBEBA;
 const int VERSION    = 4;
+const int N_REGISTERS = 6;
 
 enum cmd_code
 {
@@ -25,7 +26,9 @@ enum cmd_code
     JE       = 15,
     JNE      = 16,
     IN_CMD   = 17,
-    JMP      = 18
+    JMP      = 18,
+    CALL     = 19,
+    BACK     = 20
 };
 
 enum spu_error

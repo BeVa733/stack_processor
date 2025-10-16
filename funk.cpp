@@ -34,8 +34,12 @@ enum spu_error push_cmd (stack_t* stk, int push_value)
         return INCORRECT_COMMAND;
 }
 
-enum spu_error in_cmd (stack_t* stk, int push_value)
+enum spu_error in_cmd (stack_t* stk)
 {
+    int push_value = 0;
+    if(scanf("%d", &push_value) != 1)
+        return INCORRECT_COMMAND;
+        
     if (stack_push(stk, push_value) == SUCCESS)
         return NOT_ERRORS;
     else
@@ -221,6 +225,26 @@ GEN_JUMP(jne_cmd, !=)
 enum spu_error jmp_cmd (processor* spu)
 {
     spu->ip = spu->cmd_array[spu->ip];
+
+    return NOT_ERRORS;
+}
+
+enum spu_error call_cmd (processor* spu)
+{
+    stack_push(&(spu->stk_back), spu->ip + 1);
+
+    spu->ip = spu->cmd_array[spu->ip];
+
+    return NOT_ERRORS;
+}
+
+enum spu_error back_cmd (processor* spu)
+{
+    int jump_value = 0;
+    if (stack_pop(&(spu->stk_back), &jump_value) == FAILURE)
+        return NO_ENOUGH_ELEMENTS;
+
+    spu->ip = jump_value;
 
     return NOT_ERRORS;
 }

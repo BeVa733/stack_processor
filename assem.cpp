@@ -9,12 +9,14 @@
 #include "calc.h"
 #include "assem.h"
 
+const int N_METOK = 100;
+
 int main(int argc, char *argv[])
 {
     int n_commands = 0;
     int* code_mass = NULL;
-    int metki_array[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-
+    int metki_array[100] = {};
+    memset(metki_array, -1, sizeof(metki_array));
     if (argc != 2)
     {
         printf("ERROR: incorrect number of arguments (must be 2)\n");
@@ -22,6 +24,10 @@ int main(int argc, char *argv[])
     }
 
     code_mass = file_code_compile(&n_commands, argv[1], metki_array);
+    if (code_mass == NULL)
+    {
+        return 1;
+    }
 
     ON_DEBUG (code_writer(code_mass, "output_asm.txt", n_commands);)
     ON_DEBUG_ELSE (bin_code_writer(code_mass, "output_asm.bin", &n_commands);)
@@ -57,6 +63,8 @@ enum cmd_code get_file_command(char* str)
     else if (strcmp(input, "JNE") == 0)     return JNE;
     else if (strcmp(input, "IN") == 0)      return IN_CMD;
     else if (strcmp(input, "JMP") == 0)     return JMP;
+    else if (strcmp(input, "CALL") == 0)    return CALL;
+    else if (strcmp(input, "BACK") == 0)    return BACK;
     else return INC_FUNC;
 }
 
@@ -84,9 +92,9 @@ void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
         return;
     }
 
-    uint16_t signature = (uint16_t)SIGNATURAA;
-    uint8_t version = (uint8_t)VERSION;
-    uint16_t command_count = (uint16_t)(*n_commands);
+    int16_t signature = (int16_t)SIGNATURAA;
+    int8_t version = (int8_t)VERSION;
+    int16_t command_count = (int16_t)(*n_commands);
 
     fwrite(&signature, sizeof(signature), 1, file);
     fwrite(&version, sizeof(version), 1, file);
@@ -94,7 +102,7 @@ void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
 
     for (int i = 0; i < *n_commands; i++)
     {
-        uint16_t cmd = (uint16_t)code_mass[i];
+        int16_t cmd = (int16_t)code_mass[i];
         fwrite(&cmd, sizeof(cmd), 1, file);
     }
 
@@ -104,17 +112,32 @@ void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
 int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
 {
     int n_lines = 0;
-    enum cmd_code command = HLT;
-    int push_arg = 0;
-    int jump_arg = 0;
-    char reg_lit = 'a';
-    int metka = -1;
 
     char** ptr_mass = read_text(filename, &n_lines);
     if (ptr_mass == NULL)
         return NULL;
 
+    int total_commands = first_run_compile(ptr_mass, metki_array, n_lines);
+    if (total_commands == -1)
+        return NULL;
+
+    int* code_mass = (int*)calloc(total_commands, sizeof(int));
+    if (code_mass == NULL)
+    {
+        free(ptr_mass[0]);
+        free(ptr_mass);
+        return NULL;
+    }
+
+    return second_run_compile(ptr_mass, code_mass, metki_array, n_commands, n_lines);
+}
+
+int first_run_compile(char** ptr_mass, int* metki_array, int n_lines)
+{
+    enum cmd_code command = HLT;
     int total_commands = 0;
+    int metka = -1;
+
     for (int i = 0; i < n_lines; i++)
     {
         if (ptr_mass[i][0] == '\0' || ptr_mass[i][0] == '\n')
@@ -132,7 +155,7 @@ int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
             printf("incorrect name of function in line: %d\n", i + 1);
             free(ptr_mass[0]);
             free(ptr_mass);
-            return NULL;
+            return -1;
         }
 
         total_commands++;
@@ -145,24 +168,28 @@ int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
         {
             total_commands++;
         }
-        else if (command == JB || command == JBE || command == JA ||
-                 command == JAE || command == JE || command == JNE || command == JMP)
-        {
-            total_commands++;
-        }
-        else if (command == IN_CMD)
+        else if (command == JB || command == JBE || command == JA  ||
+                command == JAE || command == JE  || command == JNE ||
+                command == JMP || command == CALL)
         {
             total_commands++;
         }
     }
 
-    int* code_mass = (int*)calloc(total_commands, sizeof(int));
-    if (code_mass == NULL)
-    {
-        free(ptr_mass[0]);
-        free(ptr_mass);
-        return NULL;
-    }
+    return total_commands;
+}
+
+#define VSE_NAXYI           free(code_mass);\
+                            free(ptr_mass[0]);\
+                            free(ptr_mass);
+
+int* second_run_compile (char** ptr_mass, int* code_mass, int* metki_array, int* n_commands, int n_lines)
+{
+    enum cmd_code command = HLT;
+    int push_arg = 0;
+    int jump_arg = 0;
+    char reg_lit = 'a';
+    int metka = -1;
 
     *n_commands = 0;
 
@@ -181,9 +208,7 @@ int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
         if (command == INC_FUNC)
         {
             printf("incorrect name of function in line: %d\n", i + 1);
-            free(code_mass);
-            free(ptr_mass[0]);
-            free(ptr_mass);
+            VSE_NAXYI
             return NULL;
         }
 
@@ -194,67 +219,62 @@ int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
             if (sscanf(ptr_mass[i], "PUSH %d", &push_arg) != 1)
             {
                 printf("Expected number after PUSH in line %d\n", i + 1);
-                free(code_mass);
-                free(ptr_mass[0]);
-                free(ptr_mass);
+                VSE_NAXYI
                 return NULL;
             }
+
             code_mass[(*n_commands)++] = push_arg;
         }
+
         else if (command == PUSHREG || command == POPREG)
         {
             if (sscanf(ptr_mass[i], "%*s %cX", &reg_lit) != 1)
             {
                 printf("Expected register after command in line %d\n", i + 1);
-                free(code_mass);
-                free(ptr_mass[0]);
-                free(ptr_mass);
+                VSE_NAXYI
                 return NULL;
             }
+
+            if (reg_lit - 'A' > N_REGISTERS)
+            {
+                printf("Too much registers used (max: %d)\n", N_REGISTERS);
+                VSE_NAXYI
+                return NULL;
+            }
+
             code_mass[(*n_commands)++] = reg_lit - 'A';
         }
-        else if (command == JB || command == JBE || command == JA ||
-                 command == JAE || command == JE || command == JNE || command == JMP)
+
+        else if (command == JB || command == JBE || command == JA  ||
+                command == JAE || command == JE  || command == JNE ||
+                command == JMP || command == CALL)
         {
             if (sscanf(ptr_mass[i], "%*s :%d", &jump_arg) == 1)
             {
-                if (jump_arg >= 0 && jump_arg < 10 && metki_array[jump_arg] != -1)
+                if (jump_arg >= 0 && jump_arg < N_METOK && metki_array[jump_arg] != -1)
                 {
                     code_mass[(*n_commands)++] = metki_array[jump_arg];
                 }
+
                 else
                 {
                     printf("Unknown metka :%d in line %d\n", jump_arg, i + 1);
-                    free(code_mass);
-                    free(ptr_mass[0]);
-                    free(ptr_mass);
+                    VSE_NAXYI
                     return NULL;
                 }
             }
+
             else if (sscanf(ptr_mass[i], "%*s %d", &jump_arg) == 1)
             {
                 code_mass[(*n_commands)++] = jump_arg;
             }
+
             else
             {
                 printf("Expected number or metka after JUMP in line %d\n", i + 1);
-                free(code_mass);
-                free(ptr_mass[0]);
-                free(ptr_mass);
+                VSE_NAXYI
                 return NULL;
             }
-        }
-        else if (command == IN_CMD)
-        {
-            if (scanf("%d", &push_arg) != 1)
-            {
-                printf("expected arg before IN\n");
-                free(code_mass);
-                free(ptr_mass[0]);
-                free(ptr_mass);
-                return NULL;
-            }
-            code_mass[(*n_commands)++] = push_arg;
         }
     }
 
@@ -262,8 +282,10 @@ int* file_code_compile(int* n_commands, const char* filename, int* metki_array)
     free(ptr_mass);
 
     return code_mass;
+
 }
 
+#undef VSE_NAXYI
 
 char** read_text(const char* filename, int* num_lines)
 {
@@ -290,7 +312,6 @@ char** read_text(const char* filename, int* num_lines)
     buffer[read_size] = '\0';
 
     *num_lines = check_n_lines(buffer, read_size);
-    // printf("%s:%d: %s(): file_size = %d\n", __FILE__, __LINE__, __func__, *num_lines);
 
     return make_ptr_massive(buffer, *num_lines, read_size);
 
