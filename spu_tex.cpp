@@ -1,18 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #define STACK_TYPE int
 #include "stack.h"
 #include "calc.h"
 #include "spu.h"
 
+extern spu_cmd_data cmd_code_translate[CMD_COUNT];
 
 enum spu_error spu_ctor (processor* spu)
 {
     spu->cmd_array = get_commands("output_asm.bin", &(spu->cmd_count));
-    stack_ctor(&(spu->stk), 20);
+
+    for (int i = 0; i < N_RAM; i++)
+    {
+        spu->ram[i] = BASIS_DRAW_SYMBOL;
+    }
+
+    stack_ctor(&(spu->stk), 10);
     stack_ctor(&(spu->stk_back), 10);
+
     if (spu->cmd_array == NULL)
     {
         printf("Error: failed to read commands\n");
@@ -25,6 +34,7 @@ enum spu_error spu_ctor (processor* spu)
 void spu_dtor (processor* spu)
 {
     stack_dtor(&(spu->stk));
+    stack_dtor(&(spu->stk_back));
     free(spu->cmd_array);
 }
 
@@ -46,6 +56,12 @@ unsigned int spu_verif(processor* spu)
 
     else if (spu->ip < 0)
         error_code |= SPU_BAD_IP;
+
+    for (int i = 0; i < CMD_COUNT - 1; i++)
+    {
+        if ( i != cmd_code_translate[i].enum_code)
+            error_code |= INCORRECT_CMD_QUEUE;
+    }
 
     for (int i = 0; i < N_REGISTERS; i++)
     {
@@ -86,6 +102,9 @@ void spu_dump(processor* spu, unsigned int error_code)
         if (verif_code & SPU_BAD_REGISTERS)
             printf(" BAD_REGISTERS");
 
+        if (verif_code & INCORRECT_CMD_QUEUE)
+            printf( "INVALID NUMERATION OF COMMANDS");
+
         printf("\n");
     }
 
@@ -93,7 +112,7 @@ void spu_dump(processor* spu, unsigned int error_code)
     stack_dump(&(spu->stk), stack_verif(&spu->stk));
 
     printf("2) Registers [%p]:\n", spu->registers);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < N_REGISTERS; i++)
     {
         printf("  %cX: %d (0x%08X)\n", 'A' + i, spu->registers[i], spu->registers[i]);
     }
@@ -106,6 +125,12 @@ void spu_dump(processor* spu, unsigned int error_code)
         printf("  cmd_array pointer == NULL\n");
         return;
     }
+
+    //printf("5) RAM [%p]:\n", spu->ram);
+    //printf("[");
+    //for (int i = 0; i < N_RAM; i++)
+    //    printf("%d, ", spu->ram[i]);
+    //printf("]\n");
 
     printf("Command memory:\n");
 

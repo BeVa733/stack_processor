@@ -3,55 +3,42 @@
 
 const int SIGNATURAA = 0xBEBA;
 const int VERSION    = 4;
+
 const int N_REGISTERS = 6;
+const int N_METOK     = 100;
+const int N_RAM       = 10000;
+
+const int BASIS_DRAW_SYMBOL = 42;
+
+const int CMD_COUNT = 24;
 
 enum cmd_code
 {
-    INC_FUNC = 333,
     HLT      = 0,
     CMD_OUT  = 1,
-    PUSH     = 2,
-    ADD      = 3,
-    SUB      = 4,
-    MUL      = 5,
-    DIV      = 6,
-    POW      = 7,
-    SQRT     = 8,
-    PUSHREG  = 9,
-    POPREG   = 10,
-    JB       = 11,
-    JBE      = 12,
-    JA       = 13,
-    JAE      = 14,
-    JE       = 15,
-    JNE      = 16,
-    IN_CMD   = 17,
-    JMP      = 18,
-    CALL     = 19,
-    BACK     = 20
+    ADD      = 2,
+    SUB      = 3,
+    MUL      = 4,
+    DIV      = 5,
+    POW      = 6,
+    SQRT     = 7,
+    IN_CMD   = 8,
+    BACK     = 9,
+    DRAW     = 10,
+    PUSH     = 11,
+    PUSHREG  = 12,
+    POPREG   = 13,
+    JB       = 14,
+    JBE      = 15,
+    JA       = 16,
+    JAE      = 17,
+    JE       = 18,
+    JNE      = 19,
+    JMP      = 20,
+    CALL     = 21,
+    PUSHM    = 22,
+    POPM     = 23,
+    INC_FUNC = 24
 };
-
-enum spu_error
-{
-    NOT_ERRORS          = 0,
-    NO_ENOUGH_ELEMENTS  = 1,
-    DIV_ON_ZERO         = 2,
-    ZERO_POW_ZERO       = 3,
-    INCORRECT_N_ARG     = 4,
-    IRR_SQRT            = 5,
-    INCORRECT_COMMAND   = 6,
-    CREATION_ERROR      = 7
-};
-
-enum spu_verif_error
-{
-    SPU_NO_ERRORS        = 0b00000,
-    SPU_BAD_MAIN_PTR     = 0b10000,
-    SPU_BAD_CMD_ARRAY    = 0b01000,
-    SPU_BAD_CMD_COUNT    = 0b00100,
-    SPU_BAD_IP           = 0b00010,
-    SPU_BAD_REGISTERS    = 0b00001
-};
-
 
 #endif
