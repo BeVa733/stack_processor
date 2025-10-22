@@ -1,42 +1,14 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <assert.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <stdint.h>
+
+#define ASSEMBLER
 
 #include "calc.h"
 #include "assem.h"
 
-cmd_data cmd_code_translate[CMD_COUNT] =
-{
-    {HLT,     "HLT"},
-    {CMD_OUT, "OUT"},
-    {ADD,     "ADD"},
-    {MUL,     "MUL"},
-    {SUB,     "SUB"},
-    {DIV,     "DIV"},
-    {POW,     "POW"},
-    {SQRT,    "SQRT"},
-    {IN_CMD,  "IN"},
-    {BACK,    "BACK"},
-    {DRAW,    "DRAW"},
-    {PUSH,    "PUSH"},
-    {PUSHREG, "PUSHREG"},
-    {POPREG,  "POPREG"},
-    {JB,      "JB"},
-    {JBE,     "JBE"},
-    {JA,      "JA"},
-    {JAE,     "JAE"},
-    {JE,      "JE"},
-    {JNE,     "JNE"},
-    {JMP,     "JMP"},
-    {CALL,    "CALL"},
-    {PUSHM,   "PUSHM"},
-    {POPM,    "POPM"},
-};
+cmd_data* cmd_code_sorted[CMD_COUNT] = {};
 
 int main(int argc, char *argv[])
 {
@@ -53,8 +25,6 @@ int main(int argc, char *argv[])
     if (assem_data.ptr_mass == NULL)
         return 1;
 
-    assem_data.n_commands = 0;
-
     run_compile(&assem_data);
 
     assem_data.code_mass = (int*)calloc(assem_data.n_commands, sizeof(int));
@@ -64,11 +34,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    assem_data.first_pass = false;
     assem_data.n_commands = 0;
 
     if (run_compile(&assem_data) == NULL)
     {
-        free(assem_data.code_mass);
         assem_dtor(&assem_data);
         return 1;
     }
@@ -82,27 +52,54 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void assem_ctor(comp_info* assem_data)
+enum status add_label(comp_info* assem_data, const char* metka_str_name, int jump_arg)
 {
-    assem_data->code_mass  = NULL;
-    assem_data->first_pass = true;
-    assem_data->ptr_mass   = NULL;
+    if (assem_data->labels_size >= assem_data->labels_capacity)
+    {
+        assem_data->labels_capacity *= 2;
+        label* new_ptr = (label*)realloc(assem_data->labels_array, assem_data->labels_capacity * sizeof(label));
 
-    for (int i = 0; i < N_METOK; i++)
-        assem_data->metki_array[i] = -1;
+        if (new_ptr != NULL)
+        {
+            assem_data->labels_array = new_ptr;
+        }
+
+        else
+        {
+            printf("bad realocation\n");
+            return FAILURE;
+        }
+    }
+
+
+    label* new_label = &assem_data->labels_array[assem_data->labels_size++];
+    new_label->name_ptr = metka_str_name;
+    new_label->jump_arg = jump_arg;
+    new_label->hash = make_hash(metka_str_name);
+
+    return SUCCESS;
 }
 
-void assem_dtor(comp_info* assem_data)
+int find_label (comp_info* assem_data, const char* name)
 {
-    free(assem_data->code_mass);
-    free(assem_data->ptr_mass[0]);
-    free(assem_data->ptr_mass);
+    int hash = make_hash(name);
+
+    label* found = (label*)bsearch (&hash, assem_data->labels_array,
+                                    assem_data->labels_size, sizeof(label),
+                                    cmp_label_bsearch);
+
+    if (found == NULL)
+        return -1;
+
+    return found->jump_arg;
 }
+
+//asserts
 
 int* run_compile(comp_info* assem_data)
 {
     enum cmd_code command = HLT;
-    int metka = -1;
+
     const int MAX_LEN = 10;
 
     for (int i = 0; i < assem_data->n_lines; i++)
@@ -110,12 +107,11 @@ int* run_compile(comp_info* assem_data)
         if (assem_data->ptr_mass[i][0] == '\0' || assem_data->ptr_mass[i][0] == '\n')
             continue;
 
-        if (sscanf(assem_data->ptr_mass[i], ":%d", &metka) == 1)
+        if (assem_data->ptr_mass[i][0] == ':')
         {
-            if (assem_data->first_pass && metka >= 0 && metka < N_METOK)
-            {
-                assem_data->metki_array[metka] = assem_data->n_commands;
-            }
+            if (assem_data->first_pass)
+                add_label(assem_data, assem_data->ptr_mass[i] + 1, assem_data->n_commands);
+
             continue;
         }
 
@@ -134,129 +130,138 @@ int* run_compile(comp_info* assem_data)
         }
 
         if (assem_data->code_mass != NULL)
-            assem_data->code_mass[assem_data->n_commands ++] = command;
-        else
-            assem_data->n_commands ++;
+            assem_data->code_mass[assem_data->n_commands++] = command;
 
-        if (compile_arg(assem_data, i, command) == NULL)
+        else
+            assem_data->n_commands++;
+
+        if (cmd_code_translate[command].type != NO_ARG)
         {
-            printf("Error in argument compilation at line %d\n", i + 1);
-            return NULL;
+            if (compile_arg(assem_data, i, cmd_code_translate[command].type) == FAILURE)
+            {
+                printf("Error in argument compilation at line %d\n", i + 1);
+                return NULL;
+            }
         }
     }
+
+    if (assem_data->first_pass)
+        qsort(assem_data->labels_array, assem_data->labels_size, sizeof(label), cmp_label);
 
     return assem_data->code_mass;
 }
 
-int* compile_arg (comp_info* assem_data, int i, enum cmd_code command)
+enum status compile_arg (comp_info* assem_data, int i, enum type_arg type)
 {
-    char reg_lit = 'a';
-    int push_arg = 0;
-    int jump_arg = 0;
+    int argument = 0;
+    char metka_name[100] = "";
 
-    if (command == PUSH)
+    if (type == NUMBER)
     {
-        if (sscanf(assem_data->ptr_mass[i], "PUSH %d", &push_arg) != 1)
+        if (sscanf(assem_data->ptr_mass[i], "%*s %d", &argument) != 1)
         {
-            printf("Expected number after PUSH in line %d\n", i + 1);
-            return NULL;
+            printf("Expected number after command in line %d\n", i + 1);
+            return FAILURE;
         }
-
-        if (assem_data->code_mass != NULL)
-            assem_data->code_mass[assem_data->n_commands ++] = push_arg;
-        else
-            assem_data->n_commands ++;
     }
-    else if (command == PUSHREG || command == POPREG)
+
+    else if (type == REGISTER)
     {
-        if (sscanf(assem_data->ptr_mass[i], "%*s %cX", &reg_lit) != 1)
+        char reg_char = 0;
+
+        if (sscanf(assem_data->ptr_mass[i], "%*s %cX", &reg_char) != 1)
         {
             printf("Expected register after command in line %d\n", i + 1);
-            return NULL;
+            return FAILURE;
         }
 
-        if (reg_lit - 'A' >= N_REGISTERS)
+        argument = reg_char - 'A';
+
+        if (argument >= N_REGISTERS || argument < 0)
         {
-            printf("Too much registers used (max: %d)\n", N_REGISTERS);
-            return NULL;
+            printf("Invalid register %cX in line %d (max: %d)\n", reg_char, i + 1, N_REGISTERS);
+            return FAILURE;
         }
-
-        if (assem_data->code_mass != NULL)
-            assem_data->code_mass[assem_data->n_commands ++] = reg_lit - 'A';
-        else
-            assem_data->n_commands ++;
     }
 
-    else if (command >= JB && command <= CALL)
+    else if (type == METKA)
     {
-        if (sscanf(assem_data->ptr_mass[i], "%*s :%d", &jump_arg) == 1)
+        if (sscanf(assem_data->ptr_mass[i], "%*s :%99s", metka_name) == 1)
         {
-            if (jump_arg >= 0 && jump_arg < N_METOK && assem_data->metki_array[jump_arg] != -1)
+            if (assem_data->first_pass)
+                argument = 0;
+
+            else
             {
-                if (assem_data->code_mass != NULL)
-                    assem_data->code_mass[assem_data->n_commands ++] = assem_data->metki_array[jump_arg];
+                int jump_arg = find_label(assem_data, metka_name);
+
+                if (jump_arg != -1)
+                    argument = jump_arg;
+
                 else
-                    assem_data->n_commands ++;
-            }
-
-            else if (!assem_data->first_pass)
-            {
-                printf("Unknown metka :%d in line %d\n", jump_arg, i + 1);
-                return NULL;
-            }
-
-            else
-            {
-                assem_data->n_commands ++;
+                {
+                    printf("Unknown label :%s in line %d\n", metka_name, i + 1);
+                    return FAILURE;
+                }
             }
         }
 
-        else if (sscanf(assem_data->ptr_mass[i], "%*s %d", &jump_arg) == 1)
-        {
-            if (assem_data->code_mass != NULL)
-                assem_data->code_mass[assem_data->n_commands ++] = jump_arg;
-
-            else
-                assem_data->n_commands ++;
-        }
+        else if (sscanf(assem_data->ptr_mass[i], "%*s %d", &argument) == 1)
+        ;
 
         else
         {
-            printf("Expected number or metka after JUMP in line %d\n", i + 1);
-            return NULL;
+            printf("Expected number or label after command in line %d\n", i + 1);
+            return FAILURE;
         }
     }
 
-    else if (command == PUSHM || command == POPM)
+    else if (type == RAM)
     {
-        if (sscanf(assem_data->ptr_mass[i], "%*s [%cX]", &reg_lit) != 1)
+        char reg_char = 0;
+        if (sscanf(assem_data->ptr_mass[i], "%*s [%cX]", &reg_char) != 1)
         {
-            printf("Expected register after command in line %d\n", i + 1);
-            return NULL;
+            printf("Expected register in RAM access in line %d\n", i + 1);
+            return FAILURE;
         }
 
-        if (reg_lit - 'A' >= N_REGISTERS)
+        argument = reg_char - 'A';
+
+        if (argument >= N_REGISTERS || argument < 0)
         {
-            printf("Too much registers used (max: %d)\n", N_REGISTERS);
-            return NULL;
+            printf("Invalid register [%cX] in line %d (max: %d)\n", reg_char, i + 1, N_REGISTERS);
+            return FAILURE;
         }
-
-        if (assem_data->code_mass != NULL)
-            assem_data->code_mass[assem_data->n_commands ++] = reg_lit - 'A';
-
-        else
-            assem_data->n_commands ++;
     }
 
-    return (assem_data->code_mass == NULL) ? &(assem_data->n_commands) : assem_data->code_mass;
+    if (assem_data->code_mass != NULL)
+        assem_data->code_mass[assem_data->n_commands] = argument;
+
+    assem_data->n_commands++;
+
+    return SUCCESS;
 }
 
 enum cmd_code get_command(char* input)
 {
-    for (int i = 0; i < CMD_COUNT; i++)
+    int input_hash = make_hash(input);
+
+    int left_edge = 0;
+    int right_edge = CMD_COUNT - 1;
+
+    while (left_edge <= right_edge)
     {
-        if (strcmp (input, cmd_code_translate[i].str_code) == 0)
-            return cmd_code_translate[i].enum_code;
+        int mid = left_edge + (right_edge - left_edge) / 2;
+        int mid_hash = cmd_code_sorted[mid]->valid_hash;
+
+        if (mid_hash == input_hash)
+            return cmd_code_sorted[mid]->enum_code;
+
+        else if (mid_hash < input_hash)
+            left_edge = mid + 1;
+
+        else
+            right_edge = mid - 1;
     }
 
     return INC_FUNC;
@@ -307,8 +312,3 @@ void bin_code_writer(int* code_mass, const char* filename, int* n_commands)
     fclose(file);
 }
 
-void onegin_dtor(char** ptr_mass)
-{
-    free(ptr_mass[0]);
-    free(ptr_mass);
-}

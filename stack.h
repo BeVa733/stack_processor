@@ -34,7 +34,7 @@ struct stack_t
 
 enum status stack_ctor(stack_t* stk, int len);
 enum status stack_push(stack_t* stk, stack_type value);
-enum status stack_pop(stack_t* stk, stack_type* pop_value);
+enum status stack_pop (stack_t* stk, stack_type* pop_value);
 void stack_dtor(stack_t* stk);
 
 unsigned int stack_verif(stack_t* stk);

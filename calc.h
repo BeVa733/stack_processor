@@ -8,9 +8,7 @@ const int N_REGISTERS = 6;
 const int N_METOK     = 100;
 const int N_RAM       = 10000;
 
-const int BASIS_DRAW_SYMBOL = 42;
-
-const int CMD_COUNT = 24;
+const int CMD_COUNT = 25;
 
 enum cmd_code
 {
@@ -25,20 +23,21 @@ enum cmd_code
     IN_CMD   = 8,
     BACK     = 9,
     DRAW     = 10,
-    PUSH     = 11,
-    PUSHREG  = 12,
-    POPREG   = 13,
-    JB       = 14,
-    JBE      = 15,
-    JA       = 16,
-    JAE      = 17,
-    JE       = 18,
-    JNE      = 19,
-    JMP      = 20,
-    CALL     = 21,
-    PUSHM    = 22,
-    POPM     = 23,
-    INC_FUNC = 24
+    WDRAW    = 11,
+    PUSH     = 12,
+    PUSHREG  = 13,
+    POPREG   = 14,
+    JB       = 15,
+    JBE      = 16,
+    JA       = 17,
+    JAE      = 18,
+    JE       = 19,
+    JNE      = 20,
+    JMP      = 21,
+    CALL     = 22,
+    PUSHM    = 23,
+    POPM     = 24,
+    INC_FUNC = 25
 };
 
 #endif

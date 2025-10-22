@@ -1,9 +1,11 @@
+#include <TXLib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #define STACK_TYPE int
+#define SPU
 
 #include "stack.h"
 #include "calc.h"
@@ -137,7 +139,7 @@ enum spu_error pow_cmd (processor* spu)
 {
     stack_type arg_1    = 0;
     stack_type arg_2    = 0;
-    double push_arg = 0;
+    stack_type push_arg = 0;
 
     if (spu->stk.size > 1)
     {
@@ -147,8 +149,7 @@ enum spu_error pow_cmd (processor* spu)
         if (arg_1 == 0 && arg_2 == 0)
             return ZERO_POW_ZERO;
 
-        push_arg = pow(arg_2, arg_1);
-        push_arg = (stack_type)round(push_arg);
+        push_arg = (stack_type)round(pow(arg_2, arg_1));
 
         stack_push(&(spu->stk), push_arg);
 
@@ -199,11 +200,11 @@ enum spu_error name_funk (processor* spu)   \
     return NOT_ERRORS;                      \
 }
 
-GEN_JUMP(jb_cmd, <)
+GEN_JUMP(jb_cmd,  < )
 GEN_JUMP(jbe_cmd, <=)
-GEN_JUMP(ja_cmd, >)
+GEN_JUMP(ja_cmd,  > )
 GEN_JUMP(jae_cmd, >=)
-GEN_JUMP(je_cmd, ==)
+GEN_JUMP(je_cmd,  ==)
 GEN_JUMP(jne_cmd, !=)
 
 #undef GEN_JUMP
@@ -275,6 +276,34 @@ enum spu_error draw_cmd (processor* spu)
         if ((i + 1) % 100 == 0)
             printf("\n");
     }
+
+    return NOT_ERRORS;
+}
+
+enum spu_error window_draw_cmd (processor* spu)
+{
+    const int WINDOW_SIZE = (int)sqrt(N_RAM);
+    const int WINDOW_SCALE = 10;
+
+    int x = 0;
+    int y = 0;
+    int n_line = 0;
+
+    txCreateWindow (WINDOW_SCALE * WINDOW_SIZE, WINDOW_SCALE * WINDOW_SIZE);
+
+    for (int i = 0; i < N_RAM; i++)
+        {
+            x = i % WINDOW_SIZE;
+            y = n_line;
+
+        if (spu->ram[i] != BASIS_DRAW_SYMBOL)
+            txCircle (x * WINDOW_SCALE, y * WINDOW_SCALE, WINDOW_SCALE / 2);
+
+        if ((i + 1) % WINDOW_SIZE == 0)
+            n_line++;
+        }
+
+    txEnd();
 
     return NOT_ERRORS;
 }

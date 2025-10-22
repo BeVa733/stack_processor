@@ -3,12 +3,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#define SPU
 #define STACK_TYPE int
 #include "stack.h"
 #include "calc.h"
 #include "spu.h"
 
-extern spu_cmd_data cmd_code_translate[CMD_COUNT];
+// extern spu_cmd_data cmd_code_translate[CMD_COUNT];
 
 enum spu_error spu_ctor (processor* spu)
 {
@@ -126,11 +127,11 @@ void spu_dump(processor* spu, unsigned int error_code)
         return;
     }
 
-    //printf("5) RAM [%p]:\n", spu->ram);
-    //printf("[");
-    //for (int i = 0; i < N_RAM; i++)
-    //    printf("%d, ", spu->ram[i]);
-    //printf("]\n");
+    printf("5) RAM [%p]:\n", spu->ram);
+    printf("[");
+    for (int i = 0; i < N_RAM; i++)
+        printf("%d, ", spu->ram[i]);
+    printf("]\n");
 
     printf("Command memory:\n");
 

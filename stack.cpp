@@ -167,7 +167,7 @@ void stack_dump(stack_t* stk, unsigned int error_code)
         stk_printf(i, stk->data[i]);
     }
 
-    printf("}\n");
+    printf("\n}\n");
 }
 
 stack_type hash_djb2 (stack_t* stk)  //DJB2

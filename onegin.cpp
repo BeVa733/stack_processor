@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <stdint.h>
 
 #include "calc.h"
 #include "assem.h"

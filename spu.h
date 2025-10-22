@@ -1,6 +1,14 @@
 #ifndef SPU_H
 #define SPU_H
 
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_RESET   "\033[0m"
+
+const int BASIS_DRAW_SYMBOL = 0;
+
+const ssize_t SPU_VERY_BIG_NUMBER = 1000000000;
+
 struct processor
 {
     int16_t* cmd_array;
@@ -49,10 +57,10 @@ enum spu_verif_error
 
 
 enum spu_error spu_ctor (processor* spu);
-void spu_dtor (processor* spu);
-void spu_dump(processor* spu, unsigned int error_code);
+void spu_dtor           (processor* spu);
+void spu_dump           (processor* spu, unsigned int error_code);
 
-int16_t* get_commands (const char* filename, int* cmd_count);
+int16_t* get_commands     (const char* filename, int* cmd_count);
 enum spu_error do_commands(processor* spu);
 
 enum spu_error out_cmd     (processor* spu);
@@ -82,16 +90,11 @@ enum spu_error call_cmd (processor* spu);
 enum spu_error popm_cmd  (processor* spu);
 enum spu_error pushm_cmd (processor* spu);
 
-enum spu_error draw_cmd (processor* spu);
+enum spu_error draw_cmd        (processor* spu);
+enum spu_error window_draw_cmd (processor* spu);
 
 void print_error_info (enum spu_error last_error);
 unsigned int spu_verif(processor* spu);
-
-#define COLOR_RED     "\033[31m"
-#define COLOR_GREEN   "\033[32m"
-#define COLOR_RESET   "\033[0m"
-
-const ssize_t SPU_VERY_BIG_NUMBER = 1000000000;
 
 struct spu_cmd_data
 {
@@ -99,5 +102,41 @@ struct spu_cmd_data
     const char* str_code;
     enum spu_error (*funk)(processor* spu);
 };
+
+#ifdef PROCESSOR
+spu_cmd_data cmd_code_translate[CMD_COUNT] =
+{
+    {HLT,     "HLT",        0           },
+    {CMD_OUT, "OUT",     out_cmd        },
+    {ADD,     "ADD",     add_cmd        },
+    {SUB,     "SUB",     sub_cmd        },
+    {MUL,     "MUL",     mul_cmd        },
+    {DIV,     "DIV",     div_cmd        },
+    {POW,     "POW",     pow_cmd        },
+    {SQRT,    "SQRT",    sqrt_cmd       },
+    {IN_CMD,  "IN",      in_cmd         },
+    {BACK,    "BACK",    back_cmd       },
+    {DRAW,    "DRAW",    draw_cmd       },
+    {WDRAW,   "WDRAW",   window_draw_cmd},
+    {PUSH,    "PUSH",    push_cmd       },
+    {PUSHREG, "PUSHREG", pushreg_cmd    },
+    {POPREG,  "POPREG",  popreg_cmd     },
+    {JB,      "JB",      jb_cmd         },
+    {JBE,     "JBE",     jbe_cmd        },
+    {JA,      "JA",      ja_cmd         },
+    {JAE,     "JAE",     jae_cmd        },
+    {JE,      "JE",      je_cmd         },
+    {JNE,     "JNE",     jne_cmd        },
+    {JMP,     "JMP",     jmp_cmd        },
+    {CALL,    "CALL",    call_cmd       },
+    {PUSHM,   "PUSHM",   pushm_cmd      },
+    {POPM,    "POPM",    popm_cmd       },
+};
+
+#else
+extern spu_cmd_data cmd_code_translate[CMD_COUNT];
+
+#endif //PROCESSOR
+
 
 #endif
