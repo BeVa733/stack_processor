@@ -22,7 +22,24 @@ enum spu_error out_cmd (processor* spu)
 
         if (stack_pop(&(spu->stk), &last_value) == SUCCESS)
         {
-            printf("OUT: %d\n", last_value);
+            printf("%d", last_value);
+            return NOT_ERRORS;
+        }
+        else return INCORRECT_COMMAND;
+    }
+    else
+        return NO_ENOUGH_ELEMENTS;
+}
+
+enum spu_error outc_cmd (processor* spu)
+{
+    if (spu->stk.size > 0)
+    {
+        int last_value = 0;
+
+        if (stack_pop(&(spu->stk), &last_value) == SUCCESS)
+        {
+            printf("%c", last_value);
             return NOT_ERRORS;
         }
         else return INCORRECT_COMMAND;

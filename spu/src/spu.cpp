@@ -18,12 +18,15 @@ void stk_printf (unsigned int index, stack_type value)
     printf("[%u] = %d; ", index, value);
 }
 
-int main (void)
+int main (int argc, const char* argv[])
 {
     enum spu_error last_err = NOT_ERRORS;
 
     processor spu = {};
-    last_err = spu_ctor(&spu);
+    if (argc == 1)
+        last_err = spu_ctor(&spu, "output_asm.bin");
+    else 
+        last_err = spu_ctor(&spu, argv[1]);
 
     if (last_err == NOT_ERRORS)
     {

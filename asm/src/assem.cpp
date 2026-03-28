@@ -15,9 +15,9 @@ int main(int argc, char *argv[])
     comp_info assem_data ={};
     assem_ctor(&assem_data);
 
-    if (argc != 2)
+    if (argc != 2 && argc != 3)
     {
-        printf("ERROR: incorrect number of arguments (must be 2)\n");
+        printf("Usage: asm.out <sourse_asm_filename> <output_filename> (optional)\n");
         return 1;
     }
 
@@ -44,8 +44,12 @@ int main(int argc, char *argv[])
     }
 
     printf("Compilation successful\n");
+    if (argc == 3)
+        bin_code_writer(assem_data.code_mass, argv[2], &(assem_data.n_commands));
+    else
+        bin_code_writer(assem_data.code_mass, "output_asm.bin", &(assem_data.n_commands));
+
     text_code_writer(assem_data.code_mass, "output_asm.txt", assem_data.n_commands);
-    bin_code_writer(assem_data.code_mass, "output_asm.bin", &(assem_data.n_commands));
 
     assem_dtor(&assem_data);
 
@@ -277,7 +281,7 @@ void text_code_writer(int* code_mass, const char* filename, int n_commands)
     {
         fprintf(file, "%4d [%2d] - %s\n", i, code_mass[i], cmd_code_translate[code_mass[i]].str_code);
 
-        if (code_mass[i] > 9)
+        if (code_mass[i] > 12)
             i++;
     }
 

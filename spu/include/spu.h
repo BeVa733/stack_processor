@@ -56,7 +56,7 @@ enum spu_verif_error
     }
 
 
-enum spu_error spu_ctor (processor* spu);
+enum spu_error spu_ctor (processor* spu, const char* filename);
 void spu_dtor           (processor* spu);
 void spu_dump           (processor* spu, unsigned int error_code);
 
@@ -64,6 +64,7 @@ int16_t* get_commands     (const char* filename, int* cmd_count);
 enum spu_error do_commands(processor* spu);
 
 enum spu_error out_cmd     (processor* spu);
+enum spu_error outc_cmd    (processor* spu);
 enum spu_error push_cmd    (processor* spu);
 enum spu_error in_cmd      (processor* spu);
 enum spu_error pushreg_cmd (processor* spu);
@@ -111,6 +112,7 @@ spu_cmd_data cmd_code_translate[CMD_COUNT] =
 {
     {HLT,     "HLT",        0           },
     {CMD_OUT, "OUT",     out_cmd        },
+    {OUTC,    "OUTC",    outc_cmd       },
     {ADD,     "ADD",     add_cmd        },
     {SUB,     "SUB",     sub_cmd        },
     {MUL,     "MUL",     mul_cmd        },

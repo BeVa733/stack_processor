@@ -11,9 +11,9 @@
 
 // extern spu_cmd_data cmd_code_translate[CMD_COUNT];
 
-enum spu_error spu_ctor (processor* spu)
+enum spu_error spu_ctor (processor* spu, const char* filename)
 {
-    spu->cmd_array = get_commands("output_asm.bin", &(spu->cmd_count));
+    spu->cmd_array = get_commands(filename, &(spu->cmd_count));
 
     for (int i = 0; i < N_RAM; i++)
     {

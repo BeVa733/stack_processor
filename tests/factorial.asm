@@ -4,6 +4,8 @@ PUSHREG AX
 
 CALL :fact
 OUT
+PUSH 10
+OUTC
 JMP :exit
 
 :fact

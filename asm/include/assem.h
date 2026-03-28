@@ -69,6 +69,7 @@ cmd_data cmd_code_translate[CMD_COUNT] =
 {
     {HLT,     "HLT",     NO_ARG,   0 },
     {CMD_OUT, "OUT",     NO_ARG,   0 },
+    {OUTC,    "OUTC",    NO_ARG,   0 },
     {ADD,     "ADD",     NO_ARG,   0 },
     {MUL,     "MUL",     NO_ARG,   0 },
     {SUB,     "SUB",     NO_ARG,   0 },

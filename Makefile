@@ -18,13 +18,13 @@ DISASM_OBJS = $(notdir $(DISASM_SRCS:.cpp=.o))
 all: asm_bin spu_bin disasm_bin
 
 asm_bin: $(ASM_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@.out
+	$(CXX) $(CXXFLAGS) $^ -o asm.out
 
 spu_bin: $(SPU_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@.out
+	$(CXX) $(CXXFLAGS) $^ -o spu.out
 
 disasm_bin: $(DISASM_OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@.out
+	$(CXX) $(CXXFLAGS) $^ -o disasm.out
 
 vpath %.cpp $(ASM_DIR) $(DISASM_DIR) $(SPU_DIR) $(STACK_DIR)
 
@@ -32,7 +32,7 @@ vpath %.cpp $(ASM_DIR) $(DISASM_DIR) $(SPU_DIR) $(STACK_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o asm_bin.out spu_bin.out disasm_bin.out asm.out 
+	rm -f *.o asm.out spu.out disasm.out
 
 remake: clean all
 
