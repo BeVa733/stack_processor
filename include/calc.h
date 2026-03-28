@@ -1,14 +1,14 @@
 #ifndef CALC_H
 #define CALC_H
 
-const int SIGNATURAA = 0xBEBA;
-const int VERSION    = 4;
+const int SIGNATURAA  = 0xBEBA;
+const int VERSION     = 4;
 
 const int N_REGISTERS = 6;
 const int N_METOK     = 100;
 const int N_RAM       = 10000;
 
-const int CMD_COUNT = 25;
+const int CMD_COUNT   = 25;
 
 enum cmd_code
 {

@@ -130,11 +130,11 @@ void stack_dump(stack_t* stk, unsigned int error_code)
 
     printf("\n{\n");
 
-    printf("size     = %d ", stk->size);
+    printf("size     = %d ", (int)stk->size);
     if (error_code & BAD_SIZE)
         printf("BAD SIZE");
 
-    printf("\ncapacity = %d ", stk->capacity);
+    printf("\ncapacity = %d ", (int)stk->capacity);
     if (error_code & BAD_CAPACITY)
         printf("BAD CAPACITY");
 

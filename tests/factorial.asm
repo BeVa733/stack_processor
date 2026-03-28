@@ -1,0 +1,27 @@
+IN
+POPREG AX
+PUSHREG AX
+
+CALL :fact
+OUT
+JMP :exit
+
+:fact
+PUSHREG AX
+PUSH 1
+JBE :done
+
+PUSHREG AX
+PUSH 1
+SUB
+
+POPREG AX
+PUSHREG AX
+MUL
+CALL :fact
+
+:done
+BACK
+
+:exit
+HLT

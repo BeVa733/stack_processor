@@ -91,7 +91,10 @@ enum spu_error popm_cmd  (processor* spu);
 enum spu_error pushm_cmd (processor* spu);
 
 enum spu_error draw_cmd        (processor* spu);
+
+#ifdef _WIN32
 enum spu_error window_draw_cmd (processor* spu);
+#endif
 
 void print_error_info (enum spu_error last_error);
 unsigned int spu_verif(processor* spu);
@@ -117,7 +120,11 @@ spu_cmd_data cmd_code_translate[CMD_COUNT] =
     {IN_CMD,  "IN",      in_cmd         },
     {BACK,    "BACK",    back_cmd       },
     {DRAW,    "DRAW",    draw_cmd       },
+#ifdef _WIN32
     {WDRAW,   "WDRAW",   window_draw_cmd},
+#else
+    {WDRAW,   "WDRAW",        0         },
+#endif
     {PUSH,    "PUSH",    push_cmd       },
     {PUSHREG, "PUSHREG", pushreg_cmd    },
     {POPREG,  "POPREG",  popreg_cmd     },

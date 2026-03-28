@@ -1,4 +1,7 @@
+#ifdef _WIN32
 #include <TXLib.h>
+#endif
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -280,6 +283,7 @@ enum spu_error draw_cmd (processor* spu)
     return NOT_ERRORS;
 }
 
+#ifdef _WIN32
 enum spu_error window_draw_cmd (processor* spu)
 {
     const int WINDOW_SIZE = (int)sqrt(N_RAM);
@@ -304,9 +308,10 @@ enum spu_error window_draw_cmd (processor* spu)
         }
 
     txEnd();
-
+ 
     return NOT_ERRORS;
 }
+#endif
 
 void print_error_info(enum spu_error last_error)
 {

@@ -9,7 +9,7 @@
 #define SPU
 #define STACK_TYPE int
 
-#include "stack.h"
+#include "../../stack/include/stack.h"
 #include "calc.h"
 #include "spu.h"
 
@@ -17,34 +17,6 @@ void stk_printf (unsigned int index, stack_type value)
 {
     printf("[%u] = %d; ", index, value);
 }
-
-// spu_cmd_data cmd_code_translate[CMD_COUNT] =
-// {
-//     {HLT,     "HLT",        0       },
-//     {CMD_OUT, "OUT",     out_cmd    },
-//     {ADD,     "ADD",     add_cmd    },
-//     {SUB,     "SUB",     sub_cmd    },
-//     {MUL,     "MUL",     mul_cmd    },
-//     {DIV,     "DIV",     div_cmd    },
-//     {POW,     "POW",     pow_cmd    },
-//     {SQRT,    "SQRT",    sqrt_cmd   },
-//     {IN_CMD,  "IN",      in_cmd     },
-//     {BACK,    "BACK",    back_cmd   },
-//     {DRAW,    "DRAW",    draw_cmd   },
-//     {PUSH,    "PUSH",    push_cmd   },
-//     {PUSHREG, "PUSHREG", pushreg_cmd},
-//     {POPREG,  "POPREG",  popreg_cmd },
-//     {JB,      "JB",      jb_cmd     },
-//     {JBE,     "JBE",     jbe_cmd    },
-//     {JA,      "JA",      ja_cmd     },
-//     {JAE,     "JAE",     jae_cmd    },
-//     {JE,      "JE",      je_cmd     },
-//     {JNE,     "JNE",     jne_cmd    },
-//     {JMP,     "JMP",     jmp_cmd    },
-//     {CALL,    "CALL",    call_cmd   },
-//     {PUSHM,   "PUSHM",   pushm_cmd  },
-//     {POPM,    "POPM",    popm_cmd   },
-// };
 
 int main (void)
 {
@@ -80,7 +52,7 @@ enum spu_error do_commands (processor* spu)
 
         last_err = cmd_code_translate[command].funk(spu);
 
-        //spu_dump(spu, last_err);            //ДЛЯ ДЕБАГА БЛЯТЬ (НЕ УДАЛЯТЬ)
+        //spu_dump(spu, last_err);                 //for debugging
         //getchar();
 
         if (last_err != NOT_ERRORS)
